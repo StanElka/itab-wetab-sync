@@ -1,0 +1,12 @@
+# 导出文件（含个人书签网址，绝不提交）
+in/*.itabdata
+in/*.data
+in/*.json
+out/*
+!out/说明.txt
+
+# 别的编辑器/系统垃圾
+node_modules/
+.DS_Store
+Thumbs.db
+*.log

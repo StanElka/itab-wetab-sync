@@ -1,0 +1,9 @@
+# iTab ⇄ WeTab 同步产生的文件
+
+生成的文件会出现在这里：
+
+- `WeTab-导入-<日期-时间>.data` —— 导入到 Edge / WeTab
+- `iTab-导入-<日期-时间>.itabdata` —— 导入到 Chrome / iTab
+- `转换报告-<日期-时间>.txt` —— 这一次合并的明细
+
+本目录内容不会提交到仓库（`.gitignore` 里排除，只保留这个说明文件）。

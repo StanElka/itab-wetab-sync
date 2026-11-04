@@ -1,0 +1,10 @@
+# in 文件夹：把两边的导出文件放这里
+
+把这两个文件丢进本文件夹（文件名不用改）：
+
+- Chrome / iTab：设置 → **备份与恢复** → 导出本地数据 → `iTab备份-xxxx.itabdata`
+- Edge / WeTab：设置 → **备份数据** → 导出备份数据 → `wetab-xxxx.data`
+
+然后回到上一层，双击 `一键转换.bat`（或运行 `node merge.mjs`）。
+
+> `*.itabdata` / `*.data` 都在 .gitignore 里，不会被提交到仓库。

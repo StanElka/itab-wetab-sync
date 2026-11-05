@@ -15,6 +15,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
+
+/* @core-start —— 以下为纯逻辑核心，不含任何 Node API，build-web.mjs 会原样搬进网页版 */
 const NOW = Date.now();
 
 /* ============================== 基础工具 ============================== */
@@ -708,6 +710,8 @@ function validateItabFile(file) {
   });
   return errs;
 }
+
+/* @core-end */
 
 /* ============================== 命令行 ============================== */
 

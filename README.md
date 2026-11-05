@@ -6,7 +6,15 @@ Chrome 的新标签页用 iTab，Edge 用 WeTab，两边的收藏各存各的。
 
 Merge bookmarks between iTab (Chrome new tab) and WeTab (Edge new tab). Both extensions can export and import local JSON, so the work is a format conversion. Node 18+, no dependencies.
 
-## 准备
+## 网页版
+
+不想碰命令行就用 `convert.html`：双击打开，把两份导出文件拖进对应的框，点转换，下载结果，再导入各自的插件。不装 Node，不联网，文件不出本机。
+
+它和命令行版跑的是同一份核心代码——`build-web.mjs` 把 `merge.mjs` 里标记出来的核心段原样注入页面，所以两边的合并规则、判重、校验都一样。
+
+想确认它在浏览器里跑得对，打开 `convert.html#selftest`，会用仿真数据跑 10 项断言。
+
+## 准备（命令行版）
 
 - Node.js 18 或更高（`node -v` 有输出就行）
 - 两边各导出一份
@@ -15,15 +23,16 @@ Chrome：新标签页 → 设置 → 备份与恢复 → 导出本地数据，�
 
 Edge：新标签页 → 设置 → 备份数据 → 导出备份数据，得到 `wetab-*.data`
 
-## 转换
+## 命令行版
 
 把两个文件放进 `in/`：
 
 ```
 itab-wetab-sync/
+├─ convert.html      网页版，双击就能用
 ├─ 一键转换.bat      Windows 双击这个
 ├─ convert.bat       同上，英文文件名
-├─ merge.mjs
+├─ merge.mjs         核心逻辑 + 命令行
 ├─ selftest.mjs
 ├─ in/               两个导出文件放这里
 └─ out/              生成的文件
@@ -120,6 +129,14 @@ node selftest.mjs
 ```
 
 用仿真数据跑两个方向，验证 49 项：结构校验、主题合并的落点、网址去重、文件夹和文字图标的转换、重复运行不新增。本机有真实 iTab 导出时会再跑一遍做冒烟。
+
+网页版另有一份页面内自检（`convert.html#selftest`，10 项），验证注入后的核心代码在浏览器里能正常跑。
+
+改了 `merge.mjs` 的核心段之后，要重新生成网页：
+
+```
+node build-web.mjs
+```
 
 推代码前会由 GitHub Actions 在 Node 18/20/22 上跑一次。
 

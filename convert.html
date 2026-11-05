@@ -1,0 +1,1237 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>iTab ⇄ WeTab 收藏转换</title>
+<style>
+  :root {
+    --bg: #f6f6f3;
+    --card: #ffffff;
+    --ink: #1b1c1f;
+    --muted: #6b7076;
+    --line: #e3e3de;
+    --accent: #2b6ef2;
+    --accent-soft: #eaf0fe;
+    --warn: #b23c1d;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page { max-width: 880px; margin: 0 auto; padding: 40px 20px 56px; }
+  .head h1 { margin: 0 0 6px; font-size: 23px; font-weight: 650; letter-spacing: .2px; }
+  .head p { margin: 0 0 28px; color: var(--muted); font-size: 14px; }
+
+  .slots { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 640px) { .slots { grid-template-columns: 1fr; } }
+
+  .slot {
+    position: relative;
+    border: 1.5px dashed var(--line);
+    border-radius: 12px;
+    background: var(--card);
+    padding: 14px 16px 16px;
+    min-height: 150px;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .slot:hover { border-color: #c9c9c2; }
+  .slot.over { border-color: var(--accent); background: var(--accent-soft); }
+  .slot.filled { border-style: solid; border-color: #d4d4cc; }
+  .slot-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+  .slot-name { font-weight: 600; font-size: 14px; }
+  .tag { font-size: 12px; color: var(--muted); background: #f0f0ec; border-radius: 20px; padding: 2px 9px; white-space: nowrap; }
+  .slot-body { color: var(--muted); font-size: 13.5px; }
+  .slot.filled .slot-body { color: var(--ink); }
+  .file-name { font-size: 13.5px; word-break: break-all; margin-bottom: 4px; }
+  .file-meta { font-size: 12.5px; color: var(--muted); }
+  .clear { position: absolute; top: 8px; right: 10px; border: 0; background: none; color: var(--muted);
+           font-size: 18px; line-height: 1; cursor: pointer; padding: 2px 4px; display: none; }
+  .slot.filled .clear { display: block; }
+  .clear:hover { color: var(--warn); }
+
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 20px; margin: 22px 0 0; }
+  .ctl { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--muted); }
+  .ctl select {
+    font: inherit; font-size: 13.5px; color: var(--ink);
+    border: 1px solid var(--line); background: var(--card);
+    border-radius: 8px; padding: 6px 9px;
+  }
+  .ctl input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--accent); }
+  .go {
+    margin-left: auto; font: inherit; font-size: 14px; font-weight: 550;
+    color: #fff; background: var(--accent); border: 0; border-radius: 9px;
+    padding: 10px 22px; cursor: pointer; transition: opacity .15s, background .15s;
+  }
+  .go:hover:not(:disabled) { background: #1e5fe0; }
+  .go:disabled { opacity: .42; cursor: not-allowed; }
+  @media (max-width: 640px) { .go { margin-left: 0; width: 100%; } }
+
+  .error {
+    margin-top: 18px; padding: 12px 14px; border-radius: 10px; font-size: 13.5px;
+    background: #fceeea; color: var(--warn); border: 1px solid #f3d6cd;
+  }
+  .error ul { margin: 6px 0 0; padding-left: 20px; }
+
+  .result { margin-top: 26px; }
+  .result h2 { font-size: 15px; margin: 0 0 12px; font-weight: 600; }
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 640px) { .cards { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px;
+  }
+  .card h3 { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
+  .card .meta { color: var(--muted); font-size: 12.5px; margin-bottom: 14px; }
+  .card .dl {
+    display: inline-block; font-size: 13.5px; font-weight: 550; text-decoration: none;
+    color: var(--accent); border: 1px solid #cbd9f8; background: var(--accent-soft);
+    padding: 7px 14px; border-radius: 8px;
+  }
+  .card .dl:hover { background: #dfe9fd; }
+  .card.none { opacity: .55; }
+  .card.none .dl { display: none; }
+
+  details.report { margin-top: 18px; }
+  details.report summary { cursor: pointer; font-size: 13.5px; color: var(--muted); }
+  details.report pre {
+    margin: 10px 0 0; padding: 14px; background: #efefea; border-radius: 10px;
+    font-size: 12.5px; line-height: 1.7; overflow-x: auto; white-space: pre-wrap; word-break: break-word;
+  }
+  .note { margin-top: 30px; padding-top: 18px; border-top: 1px solid var(--line);
+          font-size: 12.5px; color: var(--muted); line-height: 1.8; }
+  .note code { background: #ececE7; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  .flash { animation: flash 1.2s ease; }
+  @keyframes flash { 0%, 100% { background: var(--card); } 30% { background: #fff6e6; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="head">
+    <h1>iTab ⇄ WeTab 收藏转换</h1>
+    <p>把两边导出的备份文件拖进对应的框，转换后下载新文件，再导入各自的插件。文件只在你本机处理。</p>
+  </header>
+
+  <section class="slots">
+    <div class="slot" id="slot-itab" data-kind="itab">
+      <input type="file" id="file-itab" accept=".itabdata,.json,application/json" hidden>
+      <button class="clear" type="button" aria-label="清空">×</button>
+      <div class="slot-head"><span class="slot-name">iTab 备份</span><span class="tag">Chrome · .itabdata</span></div>
+      <div class="slot-body" id="body-itab">拖进 iTab 设置里导出的文件，或点这里选</div>
+    </div>
+    <div class="slot" id="slot-wetab" data-kind="wetab">
+      <input type="file" id="file-wetab" accept=".data,.json,text/plain,application/json" hidden>
+      <button class="clear" type="button" aria-label="清空">×</button>
+      <div class="slot-head"><span class="slot-name">WeTab 备份</span><span class="tag">Edge · .data</span></div>
+      <div class="slot-body" id="body-wetab">拖进 WeTab 设置里导出的文件，或点这里选</div>
+    </div>
+  </section>
+
+  <section class="controls">
+    <label class="ctl">方向
+      <select id="direction">
+        <option value="both">双向（推荐）</option>
+        <option value="itab">只 iTab → WeTab</option>
+        <option value="wetab">只 WeTab → iTab</option>
+      </select>
+    </label>
+    <label class="ctl"><input type="checkbox" id="append"> 整块追加（旧方式，会多出「（iTab）」分区）</label>
+    <button class="go" id="go" disabled>转换</button>
+  </section>
+
+  <div class="error" id="error" hidden></div>
+
+  <section class="result" id="result" hidden>
+    <h2>转换结果</h2>
+    <div class="cards" id="cards"></div>
+    <details class="report">
+      <summary>合并明细</summary>
+      <pre id="report"></pre>
+    </details>
+  </section>
+
+  <div class="note">
+    导入顺序没要求，但 WeTab 那一步如果弹「合并 / 覆盖」，选<strong>合并</strong>：覆盖会把文件之外的设置也重置。<br>
+    两边插件都没有「换格式」的能力，所以这里做的是把数据读出来、按主题并到对方已有的分区里，再写成对方认的备份文件。整块追加只在你想要平行分区时才用。
+  </div>
+</div>
+
+<script>
+/* ===========================================================================
+   核心逻辑：由 build-web.mjs 从 merge.mjs 原样注入（同一份代码，不另写一份）
+   =========================================================================== */
+/* ==== 核心逻辑：与 merge.mjs 同源，共 695 行，勿手改本段 ==== */
+const NOW = Date.now();
+
+/* ============================== 基础工具 ============================== */
+
+/** WeTab 的 id：前缀 + 毫秒36进制 + 18 位小写字母数字（与官方 kb() 同构） */
+function wetabId(prefix = '') {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let s = prefix + NOW.toString(32);
+  for (let i = 0; i < 18; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return s;
+}
+
+/** iTab 的 id：21 位 [A-Za-z0-9-_] */
+function itabId() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  let s = '';
+  for (let i = 0; i < 21; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return s;
+}
+
+/** 按字符截断（不切坏 emoji 代理对） */
+function clampText(s, max) {
+  const a = Array.from(String(s ?? ''));
+  return a.length > max ? a.slice(0, max).join('') : a.join('');
+}
+
+/** 网址归一化：判断「是不是同一个网站」用 */
+function urlKey(raw) {
+  let u = String(raw ?? '').trim();
+  if (!u) return '';
+  u = u.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '');
+  u = u.replace(/^www\./i, '');
+  u = u.split('#')[0];
+  const [pathPart, query = ''] = u.split('?');
+  let p = pathPart;
+  if (p.length > 1 && p.endsWith('/')) p = p.slice(0, -1);
+  const drop = /^(utm_|from$|ref$|spm$|share_token$|_t$|vfm$|promotionchannel$|fbclid$|gclid$|scm$|s_cid$|pvid$|vd_source$)/i;
+  const keep = query
+    .split('&')
+    .filter(Boolean)
+    .filter((kv) => !drop.test(kv.split('=')[0] || ''))
+    .sort()
+    .join('&');
+  return (p + (keep ? '?' + keep : '')).toLowerCase();
+}
+
+/** #rrggbb / #rgb / #rrggbbaa → rgba(r, g, b, a) */
+function hexToRgba(hex, fallback = 'rgba(194, 194, 194, 1)') {
+  const c = String(hex ?? '').trim();
+  if (/^rgba?\(/i.test(c)) return c;
+  let h = c.replace(/^#/, '');
+  if (!/^[0-9a-f]+$/i.test(h) || (h.length !== 3 && h.length !== 4 && h.length !== 6 && h.length !== 8)) return fallback;
+  if (h.length === 3 || h.length === 4) h = h.split('').map((x) => x + x).join('');
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  const a = h.length === 8 ? +(parseInt(h.slice(6, 8), 16) / 255).toFixed(3) : 1;
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
+/** rgba(...) → #rrggbb */
+function rgbaToHex(color, fallback = '#cccccc') {
+  if (!color) return fallback;
+  const c = String(color).trim();
+  if (/^#[0-9a-f]{3,8}$/i.test(c)) return c;
+  const m = /rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/i.exec(c);
+  if (!m) return fallback;
+  const h = (n) => Math.max(0, Math.min(255, Math.round(+n))).toString(16).padStart(2, '0');
+  return '#' + h(m[1]) + h(m[2]) + h(m[3]);
+}
+
+/** 去掉七牛缩略图参数（渲染时会自动加，存下来会让图片失效） */
+const cleanImageUrl = (u) => String(u ?? '').replace(/\?(imageMogr2|imageView2)[^"')\s]*/gi, '');
+
+const deepClone = (x) => JSON.parse(JSON.stringify(x));
+
+/* ============================== 主题体系 ==============================
+ * 两边分区的组织习惯不一样，用一层「主题 topic」做中间语言：
+ *   一边的某个分组 → 先猜主题 → 到另一边找主题相同的分区 → 并进去
+ * 猜主题的顺序是「名字关键词优先，其次看图标」，因为用户给分组起的名字
+ * 往往比图标更贴近他心里的分类（比如叫「AI」的分组用的是科技图标）。
+ */
+
+// 主题 → WeTab 分区图标 class（WeTab 只有这 29 个 icon-* 可选）
+const TOPIC_WETAB_CLASS = {
+  home: 'icon-zhuye',
+  code: 'icon-chengxu',
+  tool: 'icon-gongju',
+  ai: 'icon-ai',
+  tech: 'icon-keji',
+  read: 'icon-yuedu',
+  learn: 'icon-yuedu',
+  news: 'icon-zixun',
+  shop: 'icon-gouwu',
+  entertainment: 'icon-yule',
+  movie: 'icon-dianying',
+  music: 'icon-yinle',
+  game: 'icon-yule',
+  social: 'icon-shejiao',
+  design: 'icon-sheji',
+  product: 'icon-chanpin',
+  travel: 'icon-lvyou',
+  finance: 'icon-jinrong',
+  food: 'icon-canyin',
+  health: 'icon-jiankang',
+  sport: 'icon-jianshen',
+  photo: 'icon-tupian',
+  app: 'icon-gongju',
+  like: 'icon-gongju',
+  other: 'icon-gongju',
+};
+
+// WeTab 分区图标 class → 主题
+const WETAB_CLASS_TOPIC = {
+  'icon-zhuye': 'home',
+  'icon-chengxu': 'code',
+  'icon-gongju': 'tool',
+  'icon-ai': 'ai',
+  'icon-keji': 'tech',
+  'icon-yuedu': 'read',
+  'icon-zixun': 'news',
+  'icon-gouwu': 'shop',
+  'icon-yule': 'entertainment',
+  'icon-dianying': 'movie',
+  'icon-yinle': 'music',
+  'icon-shejiao': 'social',
+  'icon-sheji': 'design',
+  'icon-chuangyi': 'design',
+  'icon-huihua': 'design',
+  'icon-chanpin': 'product',
+  'icon-lvyou': 'travel',
+  'icon-dili': 'travel',
+  'icon-qiche': 'travel',
+  'icon-jinrong': 'finance',
+  'icon-canyin': 'food',
+  'icon-jiankang': 'health',
+  'icon-jianshen': 'sport',
+  'icon-tiyu': 'sport',
+  'icon-sheying': 'photo',
+  'icon-tupian': 'photo',
+  'icon-tianwen': 'tech',
+  'icon-wangluo': 'tech',
+  'icon-jianzhu': 'other',
+};
+
+// iTab 分组图标名 → 主题（iTab 的 28 个官方预设，见 HomeNavGroup 的图标表）
+const ITAB_ICON_TOPIC = {
+  home: 'home',
+  xin: 'home',
+  music: 'music',
+  chat: 'social',
+  office: 'tool',
+  entertainment: 'entertainment',
+  shop: 'shop',
+  app: 'app',
+  code: 'code',
+  learn: 'learn',
+  read: 'read',
+  tool: 'tool',
+  zan: 'like',
+  collect: 'like',
+  apiapp: 'tech',
+  plane: 'travel',
+  planet: 'tech',
+  apps: 'app',
+  darw: 'design',
+  leaf: 'other',
+  photo: 'photo',
+  award: 'like',
+  fitness: 'health',
+  producthunt: 'product',
+  telegram: 'product',
+  flag: 'other',
+  bookmark: 'like',
+  bucket: 'other',
+};
+
+// 主题 → iTab 分组图标名（只选 iTab 官方预设里确实存在的）
+const TOPIC_ITAB_ICON = {
+  home: 'home',
+  code: 'code',
+  tool: 'office',
+  ai: 'ApiApp',
+  tech: 'ApiApp',
+  read: 'read',
+  learn: 'learn',
+  news: 'read',
+  shop: 'shop',
+  entertainment: 'entertainment',
+  movie: 'entertainment',
+  music: 'music',
+  game: 'entertainment',
+  social: 'chat',
+  design: 'Darw',
+  product: 'Producthunt',
+  travel: 'Plane',
+  finance: 'Award',
+  food: 'shop',
+  health: 'fitness',
+  sport: 'fitness',
+  photo: 'Photo',
+  app: 'app',
+  like: 'zan',
+  other: 'Apps',
+};
+
+// 分组名字里的关键词 → 主题（顺序有讲究：越具体的排越前）
+const NAME_TOPIC_RULES = [
+  [/人工智能|大模型|ai工具|智能助手|chatgpt|deepseek|claude|gemini|\bgpt\b|豆包|通义|文心|kimi|(?:^|[^a-z])ai(?:$|[^a-z])/i, 'ai'],
+  [/编程|代码|开发|程序|技术|code|dev|github|开源/i, 'code'],
+  [/办公|文档|效率|office|工作台|协作/i, 'tool'],
+  [/设计|素材|灵感|创意|design|figma|dribbble/i, 'design'],
+  [/产品|product|\bpm\b|需求/i, 'product'],
+  [/阅读|读书|小说|图书|书签|read|book/i, 'read'],
+  [/购物|商城|淘宝|京东|买|shop|mall/i, 'shop'],
+  [/音乐|music|歌|网易云|spotify/i, 'music'],
+  [/影视|电影|视频|追剧|动漫|movie|video|bilibili|哔哩/i, 'movie'],
+  [/摸鱼|娱乐|游戏|搞笑|放松|fun|game|play/i, 'entertainment'],
+  [/资讯|新闻|热点|news/i, 'news'],
+  [/社交|聊天|社区|论坛|social|chat/i, 'social'],
+  [/科技|数码|tech|极客|硬件/i, 'tech'],
+  [/金融|股票|投资|理财|finance|stock|crypto/i, 'finance'],
+  [/旅游|出行|地图|机票|酒店|travel|trip/i, 'travel'],
+  [/餐饮|美食|外卖|food|eat/i, 'food'],
+  [/健康|医疗|health/i, 'health'],
+  [/健身|运动|sport|fitness|跑步/i, 'sport'],
+  [/学习|教育|课程|教程|learn|edu|study/i, 'learn'],
+  [/图片|摄影|图库|photo|image|wallpaper/i, 'photo'],
+  [/工具|tool|效率/i, 'tool'],
+  [/主页|首页|常用|起始|home|start/i, 'home'],
+  [/喜欢|收藏|稍后|like|favorite/i, 'like'],
+];
+
+/** 从分组/分区名字猜主题 */
+function topicOfName(name) {
+  const n = String(name ?? '');
+  if (!n.trim()) return null;
+  for (const [re, topic] of NAME_TOPIC_RULES) if (re.test(n)) return topic;
+  return null;
+}
+
+/** iTab 分组 → 主题（名字优先，其次图标） */
+function topicOfItabGroup(group) {
+  return topicOfName(group?.name) ?? ITAB_ICON_TOPIC[String(group?.icon ?? '').toLowerCase()] ?? 'other';
+}
+
+/** WeTab 分区 → 主题（名字优先，其次图标） */
+function topicOfWetabCategory(cat) {
+  return topicOfName(cat?.name) ?? WETAB_CLASS_TOPIC[String(cat?.iconClass ?? '')] ?? 'other';
+}
+
+const wetabClassForTopic = (topic) => TOPIC_WETAB_CLASS[topic] ?? 'icon-gongju';
+const itabIconForTopic = (topic) => TOPIC_ITAB_ICON[topic] ?? 'Apps';
+
+/* ======================= iTab 项 → WeTab 项 ======================= */
+
+const ZERO_BG = 'rgba(0, 0, 0, 0)';
+
+/** WeTab 随安装附带的推荐站点，origin 都带着这批预置数据的批次前缀 */
+const WETAB_PRESET_ORIGIN_RE = /^622af28e[0-9a-f]{16}$/;
+
+/** iTab 的一个站点/文字图标 → WeTab 的 site 对象；转不了返回 null */
+function itabItemToWetabSite(item) {
+  const url = String(item?.url ?? '').trim();
+  if (!url) return null;
+  const name = clampText(item.name || url, 60);
+  const site = { id: wetabId('icon-'), name, target: url, type: 'site', updateTime: NOW };
+  const src = String(item.src ?? '').trim();
+  if (item.type === 'text' || !src) {
+    site.bgType = 'color';
+    site.bgText = clampText(item.iconText || name, 2);
+    site.bgColor = hexToRgba(item.backgroundColor);
+  } else {
+    site.bgType = 'image';
+    site.bgImage = cleanImageUrl(src);
+    site.bgColor = ZERO_BG;
+  }
+  site.origin = site.id;
+  return site;
+}
+
+/** iTab 的文件夹 → WeTab 的 folder-icon；子项全部转不了返回 null */
+function itabFolderToWetabFolder(item, seenUrls, stats) {
+  const children = [];
+  for (const child of item?.children ?? []) {
+    const url = String(child?.url ?? '').trim();
+    if (!url) continue;
+    const key = urlKey(url);
+    if (seenUrls.has(key)) {
+      stats.duplicates++;
+      continue;
+    }
+    const site = itabItemToWetabSite(child);
+    if (!site) continue;
+    seenUrls.add(key);
+    children.push(site);
+  }
+  if (!children.length) return null;
+  return {
+    id: wetabId('folder-'),
+    name: clampText(item.name || '文件夹', 30),
+    type: 'folder-icon',
+    folderSize: 'medium',
+    origin: 'add',
+    updateTime: NOW,
+    children,
+  };
+}
+
+/** iTab 一个分组 → 一串 WeTab 子项（site 或 folder-icon） */
+function itabGroupToWetabItems(group, seenUrls, stats) {
+  const out = [];
+  for (const item of group?.children ?? []) {
+    const type = String(item?.type ?? '');
+    if (type === 'component') {
+      stats.skippedComponents++;
+      continue;
+    }
+    if (type === 'folder') {
+      const folder = itabFolderToWetabFolder(item, seenUrls, stats);
+      if (folder) out.push(folder);
+      continue;
+    }
+    const url = String(item?.url ?? '').trim();
+    if (!url) continue;
+    const key = urlKey(url);
+    if (seenUrls.has(key)) {
+      stats.duplicates++;
+      continue;
+    }
+    const site = itabItemToWetabSite(item);
+    if (!site) continue;
+    seenUrls.add(key);
+    out.push(site);
+  }
+  return out;
+}
+
+/* ======================= WeTab 项 → iTab 项 ======================= */
+
+/** WeTab 的 site → iTab 的图标项；转不了返回 null */
+function wetabSiteToItabItem(site) {
+  const url = String(site?.target ?? '').trim();
+  if (!url) return null;
+  const name = clampText(site.name || url, 60);
+  const bgImage = String(site.bgImage ?? '').trim();
+  if (site.bgType === 'image' && bgImage) {
+    return {
+      id: itabId(),
+      name,
+      url,
+      type: 'icon',
+      src: cleanImageUrl(bgImage),
+      backgroundColor: rgbaToHex(site.bgColor),
+      size: '1x1',
+    };
+  }
+  return {
+    id: itabId(),
+    name,
+    url,
+    type: 'text',
+    iconText: clampText(site.bgText || name, 2),
+    backgroundColor: rgbaToHex(site.bgColor),
+    size: '1x1',
+  };
+}
+
+/** WeTab 的 folder-icon → iTab 的文件夹；子项全部转不了返回 null */
+function wetabFolderToItabFolder(item, seenUrls, stats) {
+  const children = [];
+  for (const child of item?.children ?? []) {
+    const target = String(child?.target ?? '');
+    if (!/^https?:/i.test(target)) {
+      stats.skippedSystemLinks++;
+      continue;
+    }
+    if (WETAB_PRESET_ORIGIN_RE.test(String(child?.origin ?? ''))) {
+      stats.skippedPresets++;
+      continue;
+    }
+    const it = wetabSiteToItabItem(child);
+    if (!it) continue;
+    const key = urlKey(it.url);
+    if (seenUrls.has(key)) {
+      stats.duplicates++;
+      continue;
+    }
+    seenUrls.add(key);
+    children.push(it);
+  }
+  if (!children.length) return null;
+  return {
+    id: itabId(),
+    name: clampText(item.name || '文件夹', 30),
+    size: '2x2',
+    type: 'folder',
+    children,
+  };
+}
+
+/** WeTab 一个分区 → 一串 iTab 子项 */
+function wetabCategoryToItabItems(cat, seenUrls, stats) {
+  const out = [];
+  for (const child of cat?.children ?? []) {
+    const type = String(child?.type ?? '');
+    if (type === 'widget') {
+      stats.skippedWidgets++;
+      continue;
+    }
+    if (type === 'folder-icon') {
+      const folder = wetabFolderToItabFolder(child, seenUrls, stats);
+      if (folder) out.push(folder);
+      continue;
+    }
+    if (type !== 'site') continue;
+    const target = String(child?.target ?? '');
+    // WeTab 内置的快捷入口（书签/历史记录等）在 iTab 里没有对应页面，搬过去打不开
+    if (!/^https?:/i.test(target)) {
+      stats.skippedSystemLinks++;
+      continue;
+    }
+    // origin 以 622af28e 开头 = WeTab 随安装附带的「推荐站点」预置数据，不是用户自己加的
+    if (WETAB_PRESET_ORIGIN_RE.test(String(child?.origin ?? ''))) {
+      stats.skippedPresets++;
+      continue;
+    }
+    const it = wetabSiteToItabItem(child);
+    if (!it) continue;
+    const key = urlKey(it.url);
+    if (seenUrls.has(key)) {
+      stats.duplicates++;
+      continue;
+    }
+    seenUrls.add(key);
+    out.push(it);
+  }
+  return out;
+}
+
+/* ============================== 收集网址 ============================== */
+
+/** WeTab 装好数据里已存在的全部网址（含文件夹内的） */
+function collectWetabUrls(icons) {
+  const seen = new Set();
+  const eat = (arr) => {
+    for (const it of arr ?? []) {
+      if (it?.type === 'site' && it.target) seen.add(urlKey(it.target));
+      else if (it?.type === 'folder-icon') eat(it.children);
+    }
+  };
+  for (const cat of icons ?? []) eat(cat?.children);
+  return seen;
+}
+
+/** iTab 数据里已存在的全部网址（含文件夹内的） */
+function collectItabUrls(navConfig) {
+  const seen = new Set();
+  const eat = (arr) => {
+    for (const it of arr ?? []) {
+      if (it?.url) seen.add(urlKey(it.url));
+      else if (it?.type === 'folder') eat(it.children);
+    }
+  };
+  for (const g of navConfig ?? []) eat(g?.children);
+  return seen;
+}
+
+/* ============================== 生成文件 ============================== */
+
+function newStats() {
+  return {
+    addedToWetab: 0,
+    addedToItab: 0,
+    duplicates: 0,
+    skippedComponents: 0,
+    skippedWidgets: 0,
+    skippedPresets: 0,
+    skippedSystemLinks: 0,
+    mapping: [], // {方向, 来源, 主题, 目标, 方式, 条数}
+  };
+}
+
+/** 生成「给 WeTab 导入」的文件：以 WeTab 自己的导出为底稿，只改 store-icon */
+function buildWetabFile(wetabExport, itabExport, opts, stats) {
+  const base = wetabExport ? deepClone(wetabExport) : { version: '2.2.50', branch: 'zh', platform: 'edge', timestamp: NOW, data: {} };
+  base.data = base.data ?? {};
+  const icon = (base.data['store-icon'] = base.data['store-icon'] ?? {});
+  icon.icons = Array.isArray(icon.icons) ? icon.icons : [];
+  icon.dockIdList = Array.isArray(icon.dockIdList) ? icon.dockIdList : [];
+  for (const cat of icon.icons) cat.children = Array.isArray(cat.children) ? cat.children : [];
+
+  const seen = collectWetabUrls(icon.icons);
+  const tag = opts.tag ?? (opts.append ? '（iTab）' : '');
+  let created = 0;
+  let merged = 0;
+
+  for (const group of itabExport?.navConfig ?? []) {
+    const items = itabGroupToWetabItems(group, seen, stats);
+    if (!items.length) continue;
+    const topic = topicOfItabGroup(group);
+    let target = null;
+    let how = '';
+    if (!opts.append) {
+      target = icon.icons.find((c) => topicOfWetabCategory(c) === topic) ?? null;
+      if (target) {
+        how = '并入现有分区';
+        merged++;
+      }
+    }
+    if (!target) {
+      const name = clampText(group.name || '未命名', 30) + tag;
+      target = {
+        id: wetabId('category-'),
+        iconClass: wetabClassForTopic(topic),
+        name,
+        updateTime: NOW,
+        children: [],
+      };
+      icon.icons.push(target);
+      how = '新建分区';
+      created++;
+    }
+    target.children.push(...items);
+    target.updateTime = NOW;
+    stats.addedToWetab += items.length;
+    stats.mapping.push({ side: 'wetab', from: group.name || '未命名', topic, to: target.name, how, count: items.length });
+  }
+
+  icon.updateCloudTime = NOW;
+  base.timestamp = NOW;
+  return { file: base, created, merged };
+}
+
+/** 生成「给 iTab 导入」的文件：以 iTab 自己的导出为底稿，只往 navConfig 里并 */
+function buildItabFile(itabExport, wetabExport, opts, stats) {
+  const base = itabExport ? deepClone(itabExport) : { baseConfig: {}, navConfig: [] };
+  base.navConfig = Array.isArray(base.navConfig) ? base.navConfig : [];
+  for (const g of base.navConfig) g.children = Array.isArray(g.children) ? g.children : [];
+
+  const seen = collectItabUrls(base.navConfig);
+  const tag = opts.tag ?? (opts.append ? '（WeTab）' : '');
+  const byTopic = new Map();
+  for (const g of base.navConfig) {
+    const t = topicOfItabGroup(g);
+    if (!byTopic.has(t)) byTopic.set(t, g);
+  }
+  let created = 0;
+  let merged = 0;
+  const cats = wetabExport?.data?.['store-icon']?.icons ?? [];
+
+  for (const cat of cats) {
+    const items = wetabCategoryToItabItems(cat, seen, stats);
+    if (!items.length) continue;
+    const topic = topicOfWetabCategory(cat);
+    let target = opts.append ? null : byTopic.get(topic) ?? null;
+    let how = '';
+    if (target) {
+      how = '并入现有分组';
+      merged++;
+    } else {
+      const name = clampText(cat.name || '未命名', 30) + tag;
+      target = { id: itabId(), name, icon: itabIconForTopic(topic), children: [] };
+      base.navConfig.push(target);
+      byTopic.set(topic, target);
+      how = '新建分组';
+      created++;
+    }
+    target.children.push(...items);
+    stats.addedToItab += items.length;
+    stats.mapping.push({ side: 'itab', from: cat.name || '未命名', topic, to: target.name, how, count: items.length });
+  }
+
+  return { file: base, created, merged };
+}
+
+/* ============================== 校验 ============================== */
+
+const WETAB_ID_RE = /^(icon|folder|category|widget)-[a-z0-9]+$/i;
+const ITAB_ID_RE = /^[A-Za-z0-9_-]{8,}$/;
+
+/** 校验生成的 WeTab 文件，返回错误列表（空 = 通过） */
+function validateWetabFile(file) {
+  const errs = [];
+  if (!file || typeof file !== 'object') return ['文件不是对象'];
+  if (!file.data || typeof file.data !== 'object') errs.push('缺少 data 字段');
+  const icon = file.data?.['store-icon'];
+  if (!icon) return errs.concat('data 里没有 store-icon');
+  if (!Array.isArray(icon.icons)) return errs.concat('store-icon.icons 不是数组');
+  if (typeof icon.updateCloudTime !== 'number') errs.push('store-icon 缺少 updateCloudTime');
+  if (!Array.isArray(icon.dockIdList)) errs.push('store-icon.dockIdList 不是数组');
+
+  const catIds = new Set();
+  const itemIds = new Set();
+  const urls = new Map();
+  const checkId = (id, kind, where) => {
+    if (typeof id !== 'string' || !id) errs.push(`${where} 缺少 id`);
+    else if (!WETAB_ID_RE.test(id) && !/^[a-z0-9]{10,}$/i.test(id)) errs.push(`${where} 的 id 格式可疑：${id}`);
+    else if (catIds.has(id) || itemIds.has(id)) errs.push(`${where} 的 id 重复：${id}`);
+    else (kind === 'category' ? catIds : itemIds).add(id);
+  };
+  const checkSite = (s, where) => {
+    checkId(s.id, 'item', where);
+    if (typeof s.name !== 'string') errs.push(`${where} 的 name 不是字符串`);
+    if (!s.target || typeof s.target !== 'string') errs.push(`${where} 缺少 target`);
+    if (s.type !== 'site') errs.push(`${where} 的 type 不是 site（${s.type}）`);
+    if (s.bgType !== 'image' && s.bgType !== 'color') errs.push(`${where} 的 bgType 非法：${s.bgType}`);
+    if (s.bgType === 'image' && !s.bgImage) errs.push(`${where} 是 image 但没有 bgImage`);
+    if (typeof s.updateTime !== 'number') errs.push(`${where} 缺少 updateTime`);
+    if (s.target) {
+      const k = urlKey(s.target);
+      if (urls.has(k)) errs.push(`网址重复（${where} 与 ${urls.get(k)}）：${s.target}`);
+      else urls.set(k, where);
+    }
+  };
+
+  icon.icons.forEach((cat, ci) => {
+    const where = `分区[${ci}]「${cat.name ?? ''}」`;
+    checkId(cat.id, 'category', where);
+    if (typeof cat.name !== 'string') errs.push(`${where} 的 name 不是字符串`);
+    if (cat.iconClass && !/^icon-[a-z]+$/.test(cat.iconClass) && !/^icon-/.test(cat.iconClass)) errs.push(`${where} 的 iconClass 可疑：${cat.iconClass}`);
+    if (!Array.isArray(cat.children)) errs.push(`${where} 的 children 不是数组`);
+    (cat.children ?? []).forEach((child, ii) => {
+      const cw = `${where}.children[${ii}]`;
+      if (child?.type === 'site') checkSite(child, cw);
+      else if (child?.type === 'folder-icon') {
+        checkId(child.id, 'item', cw);
+        if (!Array.isArray(child.children)) errs.push(`${cw} 的 children 不是数组`);
+        (child.children ?? []).forEach((s, si) => {
+          if (s?.type !== 'site') errs.push(`${cw}.children[${si}] 不是 site`);
+          else checkSite(s, `${cw}.children[${si}]`);
+        });
+      } else if (child?.type === 'widget') {
+        // 用户原有的小组件：原样保留，不做校验
+      } else {
+        errs.push(`${cw} 的 type 不认识：${child?.type}`);
+      }
+    });
+  });
+  return errs;
+}
+
+/** 校验生成的 iTab 文件 */
+function validateItabFile(file) {
+  const errs = [];
+  if (!file || typeof file !== 'object') return ['文件不是对象'];
+  if (!Array.isArray(file.navConfig)) return ['navConfig 不是数组'];
+  const groupIds = new Set();
+  const itemIds = new Set();
+  const urls = new Map();
+
+  const checkItem = (it, where) => {
+    if (typeof it.id !== 'string' || !it.id) errs.push(`${where} 缺少 id`);
+    else if (!ITAB_ID_RE.test(it.id)) errs.push(`${where} 的 id 格式可疑：${it.id}`);
+    else if (itemIds.has(it.id)) errs.push(`${where} 的 id 重复：${it.id}`);
+    else itemIds.add(it.id);
+    if (typeof it.name !== 'string') errs.push(`${where} 的 name 不是字符串`);
+    const t = it.type;
+    // component = iTab 自己的内置小部件（天气/日历等），用户原有数据，原样保留
+    if (t !== 'icon' && t !== 'text' && t !== 'folder' && t !== 'component') errs.push(`${where} 的 type 不认识：${t}`);
+    // 内置工具图标（component:bookmarks 之类）可以没有 url
+    if (!it.url && !it.component) errs.push(`${where} 缺少 url`);
+    if (t === 'icon' && !it.src && !it.component) errs.push(`${where} 是 icon 但没有 src`);
+    if (t === 'text' && !it.iconText) errs.push(`${where} 是 text 但没有 iconText`);
+    if (it.url) {
+      const k = urlKey(it.url);
+      if (urls.has(k)) errs.push(`网址重复（${where} 与 ${urls.get(k)}）：${it.url}`);
+      else urls.set(k, where);
+    }
+  };
+
+  file.navConfig.forEach((g, gi) => {
+    const where = `分组[${gi}]「${g.name ?? ''}」`;
+    if (typeof g.id !== 'string' || !g.id) errs.push(`${where} 缺少 id`);
+    else if (groupIds.has(g.id)) errs.push(`${where} 的 id 重复：${g.id}`);
+    else groupIds.add(g.id);
+    if (typeof g.name !== 'string') errs.push(`${where} 的 name 不是字符串`);
+    if (!Array.isArray(g.children)) errs.push(`${where} 的 children 不是数组`);
+    (g.children ?? []).forEach((it, ii) => {
+      const iw = `${where}.children[${ii}]`;
+      if (it?.type === 'folder') {
+        if (typeof it.id !== 'string' || !it.id) errs.push(`${iw} 缺少 id`);
+        else if (itemIds.has(it.id)) errs.push(`${iw} 的 id 重复：${it.id}`);
+        else itemIds.add(it.id);
+        if (!Array.isArray(it.children)) errs.push(`${iw} 的 children 不是数组`);
+        (it.children ?? []).forEach((c, ci) => checkItem(c, `${iw}.children[${ci}]`));
+      } else {
+        checkItem(it, iw);
+      }
+    });
+  });
+  return errs;
+}
+
+/* ===========================================================================
+   页面逻辑
+   =========================================================================== */
+(function () {
+  'use strict';
+
+  var state = { itab: null, wetab: null, name: { itab: '', wetab: '' } };
+
+  var el = function (id) { return document.getElementById(id); };
+  var slots = { itab: el('slot-itab'), wetab: el('slot-wetab') };
+  var bodies = { itab: el('body-itab'), wetab: el('body-wetab') };
+  var inputs = { itab: el('file-itab'), wetab: el('file-wetab') };
+  var goBtn = el('go');
+  var errorBox = el('error');
+  var resultBox = el('result');
+  var cardsBox = el('cards');
+  var reportBox = el('report');
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
+  function parseJson(text) {
+    var t = String(text || '').replace(/^\uFEFF/, '').trim();
+    if (!t) throw new Error('文件是空的');
+    try { return JSON.parse(t); }
+    catch (e) { throw new Error('不是能识别的 JSON：' + e.message); }
+  }
+
+  function detectKind(obj) {
+    if (obj && typeof obj === 'object') {
+      if (Array.isArray(obj.navConfig)) return 'itab';
+      var d = obj.data;
+      if (d && typeof d === 'object') {
+        if (d['store-icon']) return 'wetab';
+        var keys = Object.keys(d);
+        for (var i = 0; i < keys.length; i++) if (keys[i].indexOf('store-') === 0) return 'wetab';
+      }
+    }
+    return null;
+  }
+
+  function describeItab(obj) {
+    var groups = Array.isArray(obj.navConfig) ? obj.navConfig.length : 0;
+    var items = 0;
+    (obj.navConfig || []).forEach(function (g) { items += (g.children || []).length; });
+    return groups + ' 个分组 · ' + items + ' 个图标';
+  }
+
+  function describeWetab(obj) {
+    var ic = obj && obj.data && obj.data['store-icon'];
+    var cats = ic && Array.isArray(ic.icons) ? ic.icons.length : 0;
+    var items = 0;
+    (ic && ic.icons || []).forEach(function (c) { items += (c.children || []).length; });
+    return cats + ' 个分区 · ' + items + ' 个图标';
+  }
+
+  var describe = { itab: describeItab, wetab: describeWetab };
+
+  function paint(kind) {
+    var obj = state[kind];
+    var slot = slots[kind];
+    var body = bodies[kind];
+    if (!obj) {
+      slot.classList.remove('filled');
+      body.innerHTML = kind === 'itab'
+        ? '拖进 iTab 设置里导出的文件，或点这里选'
+        : '拖进 WeTab 设置里导出的文件，或点这里选';
+    } else {
+      slot.classList.add('filled');
+      body.innerHTML = '<div class="file-name">' + esc(state.name[kind] || '已载入') + '</div>' +
+        '<div class="file-meta">' + esc(describe[kind](obj)) + '</div>';
+    }
+    goBtn.disabled = !(state.itab && state.wetab);
+  }
+
+  function setError(title, list) {
+    if (!title) { errorBox.hidden = true; errorBox.innerHTML = ''; return; }
+    var html = '<div>' + esc(title) + '</div>';
+    if (list && list.length) {
+      html += '<ul>' + list.slice(0, 12).map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>';
+      if (list.length > 12) html += '<div>…还有 ' + (list.length - 12) + ' 条</div>';
+    }
+    errorBox.innerHTML = html;
+    errorBox.hidden = false;
+  }
+
+  function loadInto(kind, text, name) {
+    var obj = parseJson(text);
+    var actual = detectKind(obj);
+    if (!actual) throw new Error('这个文件看起来既不是 iTab 备份，也不是 WeTab 备份');
+    if (actual !== kind) {
+      // 放错框也照样接收，只是给个提示
+      state[actual] = obj;
+      state.name[actual] = name;
+      paint(actual);
+      setError('这个文件其实是 ' + (actual === 'itab' ? 'iTab' : 'WeTab') + ' 的备份，已放进对应的框。');
+      return;
+    }
+    state[kind] = obj;
+    state.name[kind] = name;
+    paint(kind);
+    setError(null);
+    resultBox.hidden = true;
+  }
+
+  function readFileInto(kind, file) {
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onerror = function () { setError('读取文件失败：' + file.name); };
+    reader.onload = function () {
+      try { loadInto(kind, reader.result, file.name); }
+      catch (e) { setError(file.name + '：' + e.message); }
+    };
+    reader.readAsText(file, 'utf-8');
+  }
+
+  Object.keys(slots).forEach(function (kind) {
+    var slot = slots[kind];
+    slot.addEventListener('click', function (e) {
+      if (e.target.classList.contains('clear')) return;
+      inputs[kind].click();
+    });
+    inputs[kind].addEventListener('change', function () {
+      readFileInto(kind, inputs[kind].files && inputs[kind].files[0]);
+      inputs[kind].value = '';
+    });
+    slot.querySelector('.clear').addEventListener('click', function (e) {
+      e.stopPropagation();
+      state[kind] = null; state.name[kind] = '';
+      paint(kind); resultBox.hidden = true; setError(null);
+    });
+    ['dragenter', 'dragover'].forEach(function (ev) {
+      slot.addEventListener(ev, function (e) { e.preventDefault(); slot.classList.add('over'); });
+    });
+    ['dragleave', 'dragend'].forEach(function (ev) {
+      slot.addEventListener(ev, function () { slot.classList.remove('over'); });
+    });
+    slot.addEventListener('drop', function (e) {
+      e.preventDefault();
+      slot.classList.remove('over');
+      var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) readFileInto(kind, f);
+    });
+  });
+
+  // 整页拖放兜底：拖到空白处也能按类型落位
+  window.addEventListener('dragover', function (e) { e.preventDefault(); });
+  window.addEventListener('drop', function (e) {
+    e.preventDefault();
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!f) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var obj = parseJson(reader.result);
+        var kind = detectKind(obj);
+        if (!kind) { setError('拖进来的文件不是这两种备份：' + f.name); return; }
+        state[kind] = obj; state.name[kind] = f.name; paint(kind); setError(null);
+      } catch (err) { setError(f.name + '：' + err.message); }
+    };
+    reader.readAsText(f, 'utf-8');
+  });
+
+  function stamp() {
+    var d = new Date();
+    var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes());
+  }
+
+  function download(name, text, mime) {
+    var blob = new Blob([text], { type: mime || 'application/json;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 1000);
+  }
+
+  function card(title, meta, fileName, text, mime, disabledReason) {
+    var wrap = document.createElement('div');
+    wrap.className = 'card' + (text ? '' : ' none');
+    wrap.innerHTML = '<h3>' + esc(title) + '</h3><div class="meta">' + esc(meta) + '</div>';
+    if (text) {
+      var btn = document.createElement('a');
+      btn.className = 'dl';
+      btn.href = '#';
+      btn.textContent = '下载 ' + fileName;
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        download(fileName, text, mime);
+      });
+      wrap.appendChild(btn);
+    } else if (disabledReason) {
+      var none = document.createElement('div');
+      none.className = 'meta';
+      none.textContent = disabledReason;
+      wrap.appendChild(none);
+    }
+    return wrap;
+  }
+
+  function run() {
+    setError(null);
+    resultBox.hidden = true;
+    cardsBox.innerHTML = '';
+
+    var dir = el('direction').value;
+    var useAppend = el('append').checked;
+    var opts = { append: useAppend };
+    var wantW = dir === 'both' || dir === 'itab';
+    var wantI = dir === 'both' || dir === 'wetab';
+    var results = {};
+    var stats;
+
+    try {
+      stats = newStats();
+      if (wantW) {
+        results.wetab = buildWetabFile(state.wetab, state.itab, opts, stats);
+        var ew = validateWetabFile(results.wetab.file);
+        if (ew.length) { setError('生成的 WeTab 文件有问题，未提供下载：', ew); return; }
+      }
+      if (wantI) {
+        results.itab = buildItabFile(state.itab, state.wetab, opts, stats);
+        var ei = validateItabFile(results.itab.file);
+        if (ei.length) { setError('生成的 iTab 文件有问题，未提供下载：', ei); return; }
+      }
+    } catch (e) {
+      setError('转换失败：' + (e && e.message ? e.message : String(e)));
+      return;
+    }
+
+    var s = stamp();
+
+    if (wantW) {
+      var wn = 'WeTab-导入-' + s + '.data';
+      var wtext = JSON.stringify(results.wetab.file);
+      var wtail = stats.addedToWetab === 0 ? '（对方没有需要搬过来的内容）' : '';
+      cardsBox.appendChild(card(
+        'WeTab（Edge）',
+        '并入 ' + stats.addedToWetab + ' 个图标 · 新建分区 ' + results.wetab.created +
+        ' 个 · 并入现有 ' + results.wetab.merged + ' 个 · ' + Math.round(wtext.length / 1024) + ' KB' + wtail,
+        wn, wtext, 'text/wetab'
+      ));
+    } else {
+      cardsBox.appendChild(card('WeTab（Edge）', '', '', '', '', '这次没生成（只做了反向）'));
+    }
+
+    if (wantI) {
+      var iname = 'iTab-导入-' + s + '.itabdata';
+      var itext = JSON.stringify(results.itab.file);
+      var itail = stats.addedToItab === 0 ? '（iTab 里已经有全部网址，可以不做这一步）' : '';
+      cardsBox.appendChild(card(
+        'iTab（Chrome）',
+        '并入 ' + stats.addedToItab + ' 个图标 · 新建分组 ' + results.itab.created +
+        ' 个 · 并入现有 ' + results.itab.merged + ' 个 · ' + Math.round(itext.length / 1024) + ' KB' + itail,
+        iname, itext, 'application/json;charset=utf-8'
+      ));
+    } else {
+      cardsBox.appendChild(card('iTab（Chrome）', '', '', '', '', '这次没生成（只做了反向）'));
+    }
+
+    var lines = [];
+    lines.push('iTab → WeTab：并入 ' + stats.addedToWetab + ' 个图标，新建分区 ' +
+      (results.wetab ? results.wetab.created : 0) + ' 个，并入现有 ' + (results.wetab ? results.wetab.merged : 0) + ' 个');
+    lines.push('WeTab → iTab：并入 ' + stats.addedToItab + ' 个图标，新建分组 ' +
+      (results.itab ? results.itab.created : 0) + ' 个，并入现有 ' + (results.itab ? results.itab.merged : 0) + ' 个');
+    lines.push('重复跳过 ' + stats.duplicates + ' 条；跳过小部件 iTab ' + stats.skippedComponents +
+      ' 个、WeTab ' + stats.skippedWidgets + ' 个');
+    if (stats.skippedPresets || stats.skippedSystemLinks) {
+      lines.push('跳过 WeTab 自带推荐站点 ' + stats.skippedPresets + ' 个、系统快捷入口 ' +
+        stats.skippedSystemLinks + ' 个');
+    }
+    lines.push('');
+    stats.mapping.forEach(function (m) {
+      lines.push('  [→' + (m.side === 'wetab' ? 'WeTab' : 'iTab') + '] ' + m.from + ' → ' + m.how + '「' + m.to + '」 +' + m.count);
+    });
+    if (!stats.mapping.length) lines.push('  （没有需要搬的条目）');
+    reportBox.textContent = lines.join('\n');
+
+    resultBox.hidden = false;
+    resultBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  goBtn.addEventListener('click', run);
+
+  /* --------------------------- 页面内自检 #selftest --------------------------- */
+  if (location.hash === '#selftest') {
+    var out = [];
+    var pass = 0, fail = 0;
+    function ck(cond, label) {
+      if (cond) { pass++; out.push('  ok   ' + label); }
+      else { fail++; out.push('  FAIL ' + label); }
+    }
+    try {
+      var wetabSample = {
+        version: '2.2.50', branch: 'zh', platform: 'edge', timestamp: Date.now(),
+        data: {
+          'store-wallpaper': { wallpaper: 'x', updateCloudTime: 1 },
+          'store-icon': {
+            icons: [
+              { id: 'category-main', iconClass: 'icon-zhuye', name: '主页', updateTime: 0, children: [
+                { name: 'B站', target: 'https://www.bilibili.com/', type: 'site', bgType: 'image',
+                  bgImage: 'https://x/y.png', bgColor: 'rgba(0,0,0,0)', origin: 'online', id: wetabId('icon-'), updateTime: 0 }
+              ] },
+              { id: 'category-ent', iconClass: 'icon-yule', name: '娱乐', updateTime: 0, children: [
+                { name: '壁纸', target: 'https://haowallpaper.com/', type: 'site', bgType: 'color',
+                  bgText: '壁纸', bgColor: 'rgba(194,194,194,1)', origin: 'popup', id: wetabId('icon-'), updateTime: 0 }
+              ] },
+              { id: 'category-shop', iconClass: 'icon-gouwu', name: '购物', updateTime: 0, children: [
+                { name: 'Amazon', target: 'https://inftab.com/amazon/', type: 'site', bgType: 'image',
+                  bgImage: 'https://x/z.png', bgColor: 'rgba(0,0,0,0)', origin: '622af28e7c5d1e54a2d12700',
+                  id: wetabId('icon-'), updateTime: 0 }
+              ] }
+            ],
+            dockIdList: [], aiCateUserDecided: false, updateCloudTime: 1
+          }
+        }
+      };
+      var itabSample = {
+        baseConfig: { searchEngine: 'bing' },
+        navConfig: [
+          { id: 'g1', name: '主页', icon: 'home', children: [
+            { id: itabId(), type: 'icon', name: 'B站', url: 'https://www.bilibili.com', src: 'https://f/a.svg', size: '1x1', pos: '' },
+            { id: itabId(), type: 'icon', name: '知乎', url: 'https://www.zhihu.com', src: 'https://f/b.svg', size: '1x1', pos: '' }
+          ] },
+          { id: 'g2', name: '编程', icon: 'code', children: [
+            { id: itabId(), type: 'icon', name: 'GitHub', url: 'https://github.com', src: 'https://f/c.svg', size: '1x1', pos: '' }
+          ] }
+        ]
+      };
+
+      var stats = newStats();
+      var rw = buildWetabFile(wetabSample, itabSample, {}, stats);
+      ck(validateWetabFile(rw.file).length === 0, 'WeTab 输出通过校验');
+      ck(JSON.stringify(rw.file.data['store-wallpaper']) === JSON.stringify(wetabSample.data['store-wallpaper']), '其它 store 未被改动');
+      var main = rw.file.data['store-icon'].icons.filter(function (c) { return c.name === '主页'; })[0];
+      ck(!!main && main.children.some(function (c) { return String(c.target || '').indexOf('zhihu') >= 0; }), 'iTab 主页并进 WeTab 主页');
+      ck(main.children.filter(function (c) { return String(c.target || '').indexOf('bilibili') >= 0; }).length === 1, '重复网址只留一条');
+      var codeCat = rw.file.data['store-icon'].icons.filter(function (c) { return c.iconClass === 'icon-chengxu'; })[0];
+      ck(!!codeCat && codeCat.children.some(function (c) { return String(c.target || '').indexOf('github') >= 0; }),
+        '主题匹配时新建带 icon-chengxu 的分区');
+      ck(!rw.file.data['store-icon'].icons.some(function (c) { return /（iTab）/.test(c.name); }), '不产生「（iTab）」后缀');
+
+      var stats2 = newStats();
+      var ri = buildItabFile(itabSample, wetabSample, {}, stats2);
+      ck(validateItabFile(ri.file).length === 0, 'iTab 输出通过校验');
+      ck(ri.file.navConfig.some(function (g) {
+        return g.children.some(function (c) { return String(c.url || '').indexOf('haowallpaper') >= 0; });
+      }), 'WeTab 娱乐并进 iTab');
+      ck(!ri.file.navConfig.some(function (g) {
+        return g.children.some(function (c) { return /inftab/.test(String(c.url || '')); });
+      }), '跳过 WeTab 自带推荐站点');
+      var biliCount = 0;
+      ri.file.navConfig.forEach(function (g) {
+        g.children.forEach(function (c) { if (String(c.url || '').indexOf('bilibili') >= 0) biliCount++; });
+      });
+      ck(biliCount === 1, 'iTab 里已有的网址不会搬成两份');
+
+      out.unshift((fail ? '❌ 自检失败 ' + fail + ' 项' : '✅ 自检通过 ' + pass + ' 项'));
+      out.unshift('页面内自检（用仿真数据跑一遍核心逻辑）');
+      out.push('');
+      document.body.innerHTML = '<div class="page"><pre id="selftest-out" style="white-space:pre-wrap;font-size:13px;line-height:1.8"></pre></div>';
+      document.getElementById('selftest-out').textContent = out.join('\n');
+    } catch (e) {
+      document.body.innerHTML = '<div class="page"><pre id="selftest-out"></pre></div>';
+      document.getElementById('selftest-out').textContent = '自检抛错：' + (e && e.stack || e);
+    }
+  }
+})();
+</script>
+</body>
+</html>
